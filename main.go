@@ -49,7 +49,11 @@ func main() {
 	}
 
 	cmd := exec.Command("go", args...)
-	out, _ := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 
 	fmt.Print(string(out))
+
+	if err != nil {
+		os.Exit(1)
+	}
 }
