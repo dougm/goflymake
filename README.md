@@ -21,12 +21,19 @@ multi-file packages and _test.go files.  Support for os/arch specific
 
  2. Add these lines to your **.emacs** or similar:
 
- 		(add-to-list 'load-path "~/gocode/src/github.com/dougm/goflymake")
-		(require 'go-flymake)
+   * **flymake**
+
+            (add-to-list 'load-path "~/gocode/src/github.com/dougm/goflymake")
+            (require 'go-flymake)
+
+   * **flycheck**
+
+            (add-to-list 'load-path "~/gocode/src/github.com/dougm/goflymake")
+            (require 'go-flycheck)
+
 
 ### ToDo
 
 We probably shouldn't need the `goflymake` program, the `go` tool could
 be tweaked to support the flymake style of syntax checking.
 Maybe there is already a better way, but I couldn't find one.
-

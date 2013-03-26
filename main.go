@@ -9,12 +9,16 @@ import (
 	"strings"
 )
 
-const prefix = "flymake_"
-
 func main() {
+	prefix := "flymake_"
 	file := os.Args[len(os.Args)-1]
 	sdir := path.Dir(file)
 	base := path.Base(file)
+
+	if len(os.Args) == 3 {
+		prefix = os.Args[1]
+	}
+
 	orig := base[len(prefix):]
 
 	isTest := false
