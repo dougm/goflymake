@@ -1,0 +1,31 @@
+;;; go-flycheck.el --- goflymake flycheck checker
+
+;; Author: Peter Vasil <mail@petervasil.net>
+
+;;; Commentary:
+;; Flycheck checker for the go programming language using goflymake tool
+;;
+;; Add the following lines to your .emacs:
+;;
+;;   (add-to-list 'load-path "$GOPATH/src/github.com/dougm/goflymake")
+;;   (require 'go-flycheck)
+
+;;; Code:
+
+(eval-when-compile
+  (require 'go-mode)
+  (require 'flycheck))
+
+(flycheck-declare-checker go-goflymake
+  "A Go syntax and style checker using the go utility.
+
+See URL `https://github.com/dougm/goflymake'."
+  :command '("goflymake" "flycheck-" source-inplace)
+  :error-patterns '(("^\\(?1:.*\\):\\(?2:[0-9]+\\): \\(?4:.*\\)$" error))
+  :modes 'go-mode)
+
+(add-to-list 'flycheck-checkers 'go-goflymake)
+
+(provide 'go-flycheck)
+
+;;; go-flycheck.el ends here
