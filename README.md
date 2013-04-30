@@ -7,9 +7,15 @@ multi-file packages and _test.go files.  Support for os/arch specific
 
 ### Setup
 
- 1. If needed, update your **$PATH** to include go installed binaries, for example:
+ 1. If needed, update your **${PATH}** to include Go installed binaries, for example:
 
-    `export PATH=$PATH:$GOPATH/bin`
+    `export PATH=${PATH}:${GOPATH}/bin`
+
+    Depending on your Emacs workflow (e.g., windowing system environment), it may be required to explicitly set
+the following items:
+    1. ``(setenv "GOPATH" "/path/to/gopath")``
+    2. ``(setenv "PATH" (concat (getenv "PATH") ":" "/extra/path/element"))``
+    3. ``(setq exec-path (append exec-path (list (expand-file-name "/another/thing"))))``
 
  2. Install goflymake:
 
@@ -37,3 +43,11 @@ multi-file packages and _test.go files.  Support for os/arch specific
 We probably shouldn't need the `goflymake` program, the `go` tool could
 be tweaked to support the flymake style of syntax checking.
 Maybe there is already a better way, but I couldn't find one.
+
+### Troubleshooting
+
+The ``goflymake`` command includes forensic information to assist in debugging
+anomalies, which will assist you in tracking down the problem.
+
+If worst comes to worst, the [Flymake Troubleshooting Guide](http://www.gnu.org/software/emacs/manual/html_node/flymake/Troubleshooting.html)
+is definitely helpful.

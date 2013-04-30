@@ -20,7 +20,7 @@
   "A Go syntax and style checker using the go utility.
 
 See URL `https://github.com/dougm/goflymake'."
-  :command '("goflymake" "flycheck-" source-inplace)
+  :command '("goflymake" "-prefix=flycheck-" source-inplace)
   :error-patterns '(("^\\(?1:.*\\):\\(?2:[0-9]+\\): \\(?4:.*\\)$" error))
   :modes 'go-mode)
 
