@@ -17,6 +17,7 @@ const (
 
 var (
 	prefix = flag.String("prefix", "flymake_", "The prefix for generated Flymake artifacts.")
+	debug  = flag.Bool("debug", false, "Enable extra diagnostic output to determine why errors are occurring.")
 
 	testArguments  = []string{"test", "-c"}
 	buildArguments = []string{"build", "-o", "/dev/null"}
@@ -76,17 +77,19 @@ func main() {
 	fmt.Print(string(out))
 
 	if err != nil {
-		banner := strings.Repeat("*", 80)
+		if *debug {
+			banner := strings.Repeat("*", 80)
 
-		log.Println(banner)
-		log.Println("Encountered a problem:", err)
-		log.Println("goflymake ARGUMENTS:", os.Args)
-		log.Println("Go ARGUMENTS:", goArguments)
-		log.Println("ENVIRONMENT VARIABLES")
-		log.Println("PATH:", os.Getenv("PATH"))
-		log.Println("GOPATH", os.Getenv("GOPATH"))
-		log.Println("GOROOT", os.Getenv("GOROOT"))
-		log.Println(banner)
+			log.Println(banner)
+			log.Println("Encountered a problem:", err)
+			log.Println("goflymake ARGUMENTS:", os.Args)
+			log.Println("Go ARGUMENTS:", goArguments)
+			log.Println("ENVIRONMENT VARIABLES")
+			log.Println("PATH:", os.Getenv("PATH"))
+			log.Println("GOPATH", os.Getenv("GOPATH"))
+			log.Println("GOROOT", os.Getenv("GOROOT"))
+			log.Println(banner)
+		}
 
 		os.Exit(1)
 	}
