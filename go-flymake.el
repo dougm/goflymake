@@ -2,6 +2,15 @@
   (require 'go-mode)
   (require 'flymake))
 
+(defgroup goflymake nil
+  "Support for Flymake in Go via goflymake"
+  :group 'go)
+
+(defcustom goflymake-debug nil
+  "Enable failure debugging mode in goflymake."
+  :type 'boolean
+  :group 'goflymake)
+
 ;; flymake.el's flymake-create-temp-inplace appends a
 ;; '_flymake' suffix to file-name.
 ;; this version prepends a 'flymake_' prefix, since the go tools look
@@ -22,7 +31,9 @@
          (local-file (file-relative-name
                       temp-file
                       (file-name-directory buffer-file-name))))
-    (list "goflymake" (list temp-file))))
+    (list "goflymake"
+          (list (if goflymake-debug "-debug=true" "-debug=false")
+                temp-file))))
 
 (push '(".+\\.go$" goflymake-init) flymake-allowed-file-name-masks)
 
