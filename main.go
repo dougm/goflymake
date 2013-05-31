@@ -90,7 +90,5 @@ func main() {
 			log.Println("GOROOT", os.Getenv("GOROOT"))
 			log.Println(banner)
 		}
-
-		os.Exit(1)
 	}
 }
