@@ -23,7 +23,10 @@ type (
 	}
 	echoTransform    struct{}
 	warningTransform struct{}
-	diffTransform    struct{}
+
+	diffTransform struct {
+		name string
+	}
 
 	flymakeCommand struct {
 		cmd         *exec.Cmd
@@ -66,7 +69,7 @@ func (*warningTransform) transform(input io.Reader, output io.Writer) {
 	}
 }
 
-func (*diffTransform) transform(input io.Reader, output io.Writer) {
+func (xform *diffTransform) transform(input io.Reader, output io.Writer) {
 	filename := ""
 	currentLine := 0
 	numDeleted := 0
@@ -78,7 +81,7 @@ func (*diffTransform) transform(input io.Reader, output io.Writer) {
 
 	printWarnings := func() {
 		for ; numDeleted > 0; numDeleted-- {
-			printWarning("removed by fmt")
+			printWarning(xform.name + ":removed line")
 			currentLine++
 		}
 	}
@@ -107,11 +110,11 @@ func (*diffTransform) transform(input io.Reader, output io.Writer) {
 			numDeleted++
 		} else if strings.HasPrefix(line, "+") {
 			if numDeleted > 0 {
-				printWarning("changed by fmt: " + line[1:])
+				printWarning(xform.name + ":changed: " + line[1:])
 				numDeleted--
 				currentLine++
 			} else {
-				printWarning("added by fmt: " + line[1:])
+				printWarning(xform.name + ":added: " + line[1:])
 			}
 		} else {
 			printWarnings()
@@ -187,7 +190,7 @@ func vetCommand(file string) flymakeCommand {
 func fmtCommand(file string) flymakeCommand {
 	return flymakeCommand{
 		exec.Command("gofmt", "-d", file),
-		&diffTransform{},
+		&diffTransform{"fmt"},
 		&echoTransform{},
 	}
 }
@@ -195,7 +198,7 @@ func fmtCommand(file string) flymakeCommand {
 func fixCommand(file string) flymakeCommand {
 	return flymakeCommand{
 		exec.Command("go", "tool", "fix", "-diff", file),
-		&diffTransform{},
+		&diffTransform{"fix"},
 		&echoTransform{},
 	}
 }
