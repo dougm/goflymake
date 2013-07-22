@@ -91,11 +91,10 @@ func (xform *diffTransform) transform(input io.Reader, output io.Writer) {
 	// diff line
 	scanner.Scan()
 	line := scanner.Text()
-	if strings.HasPrefix(line, "diff ") {
-		filename = strings.Split(line[5:], " ")[0]
-	} else {
+	if !strings.HasPrefix(line, "diff ") {
 		return
 	}
+	filename = strings.Split(line[5:], " ")[0]
 
 	// --- +++ lines
 	scanner.Scan()
