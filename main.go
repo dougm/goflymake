@@ -11,8 +11,25 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
+)
+
+type (
+	transformer interface {
+		transform(input io.Reader, output io.Writer)
+	}
+	echoTransform    struct{}
+	warningTransform struct{}
+	diffTransform    struct{}
+
+	flymakeCommand struct {
+		cmd         *exec.Cmd
+		stdoutXform transformer
+		stderrXform transformer
+	}
 )
 
 const (
@@ -23,11 +40,86 @@ var (
 	prefix = flag.String("prefix", "flymake_", "The prefix for generated Flymake artifacts.")
 	debug  = flag.Bool("debug", false, "Enable extra diagnostic output to determine why errors are occurring.")
 
+	lineNumRegex  = regexp.MustCompile(":[0-9]+:")
+	diffHunkRegex = regexp.MustCompile("^@@ -([0-9]+)")
+
+	testFile string
+
 	testArguments  = []string{"test", "-c"}
 	buildArguments = []string{"build", "-o", "/dev/null"}
 
 	debugLog *log.Logger
 )
+
+func (*echoTransform) transform(input io.Reader, output io.Writer) {
+	scanner := bufio.NewScanner(input)
+	for scanner.Scan() {
+		fmt.Fprintln(output, scanner.Text())
+	}
+}
+
+func (*warningTransform) transform(input io.Reader, output io.Writer) {
+	scanner := bufio.NewScanner(input)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Fprintln(output, lineNumRegex.ReplaceAllString(line, "${0}warning:"))
+	}
+}
+
+func (*diffTransform) transform(input io.Reader, output io.Writer) {
+	filename := ""
+	currentLine := 0
+	numDeleted := 0
+
+	printWarning := func(text string) {
+		fmt.Fprintf(output, "%s:%d:warning:%s", filename, currentLine, text)
+		fmt.Fprintln(output, "")
+	}
+
+	printWarnings := func() {
+		for ; numDeleted > 0; numDeleted-- {
+			printWarning("removed by fmt")
+			currentLine++
+		}
+	}
+
+	scanner := bufio.NewScanner(input)
+
+	// diff line
+	scanner.Scan()
+	line := scanner.Text()
+	if strings.HasPrefix(line, "diff ") {
+		filename = strings.Split(line[5:], " ")[0]
+	} else {
+		return
+	}
+
+	// --- +++ lines
+	scanner.Scan()
+	scanner.Scan()
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if matches := diffHunkRegex.FindStringSubmatch(line); len(matches) > 0 {
+			printWarnings()
+			currentLine, _ = strconv.Atoi(matches[1])
+		} else if strings.HasPrefix(line, "-") {
+			numDeleted++
+		} else if strings.HasPrefix(line, "+") {
+			if numDeleted > 0 {
+				printWarning("changed by fmt: " + line[1:])
+				numDeleted--
+				currentLine++
+			} else {
+				printWarning("added by fmt: " + line[1:])
+			}
+		} else {
+			printWarnings()
+			currentLine++
+		}
+	}
+	printWarnings()
+}
 
 // buildCommand returns an *exec.Cmd which will build the file or
 // package or, in the case of test files, the test binary. If the file
@@ -35,7 +127,7 @@ var (
 // binary) is built otherwise only the single file is built. If the
 // file is part of a package and has the flymake prefix, the file
 // without the prefix is excluded from the build run.
-func buildCommand(file string) *exec.Cmd {
+func buildCommand(file string) flymakeCommand {
 	baseName := path.Base(file)
 	var ignoreBaseName string
 
@@ -77,13 +169,66 @@ func buildCommand(file string) *exec.Cmd {
 
 	debugLog.Println("go build arguments:", goArguments)
 
-	return exec.Command("go", goArguments...)
+	return flymakeCommand{
+		exec.Command("go", goArguments...),
+		&echoTransform{},
+		&echoTransform{},
+	}
 }
 
-// vetCommand returns an *exec.Cmd which will run go vet on the given
-// file.
-func vetCommand(file string) *exec.Cmd {
-	return exec.Command("go", "vet", file)
+func vetCommand(file string) flymakeCommand {
+	return flymakeCommand{
+		exec.Command("go", "vet", file),
+		&echoTransform{},
+		&warningTransform{},
+	}
+}
+
+func fmtCommand(file string) flymakeCommand {
+	return flymakeCommand{
+		exec.Command("gofmt", "-d", file),
+		&diffTransform{},
+		&echoTransform{},
+	}
+}
+
+func fixCommand(file string) flymakeCommand {
+	return flymakeCommand{
+		exec.Command("go", "tool", "fix", "-diff", file),
+		&diffTransform{},
+		&echoTransform{},
+	}
+}
+
+// printCmdOutput start the given command and prints each line the
+// command produces on standard output and standard error.
+func (cmd flymakeCommand) printOutput() {
+	stdout, err := cmd.cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	stderr, err := cmd.cmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	err = cmd.cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	var wg sync.WaitGroup
+
+	runTransform := func(input io.Reader, xform transformer) {
+		wg.Add(1)
+		go func() { defer wg.Done(); xform.transform(input, os.Stdout) }()
+	}
+
+	runTransform(stdout, cmd.stdoutXform)
+	runTransform(stderr, cmd.stderrXform)
+
+	wg.Wait()
 }
 
 func init() {
@@ -92,6 +237,8 @@ func init() {
 	if len(flag.Args()) != 1 {
 		log.Fatalf("%s some_file.go", path.Base(os.Args[0]))
 	}
+
+	testFile = flag.Args()[0]
 
 	var writer io.Writer
 
@@ -108,57 +255,18 @@ func init() {
 	debugLog.Println("GOROOT", os.Getenv("GOROOT"))
 }
 
-// printCmdOutput start the given command and prints each line the
-// command produces on standard output and standard error.
-func printCmdOutput(cmd exec.Cmd) {
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		panic(err)
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		panic(err)
-	}
-
-	err = cmd.Start()
-	if err != nil {
-		panic(err)
-	}
-
-	var wg sync.WaitGroup
-
-	printPipe := func(pipe io.ReadCloser) {
-		defer wg.Done()
-		scanner := bufio.NewScanner(pipe)
-		for scanner.Scan() {
-			debugLog.Println(scanner.Text())
-			fmt.Println(scanner.Text())
-		}
-	}
-
-	wg.Add(2)
-	go printPipe(stdout)
-	go printPipe(stderr)
-
-	wg.Wait()
-}
-
 func main() {
-	testFile := flag.Args()[0]
 	var wg sync.WaitGroup
 
-	runCmd := func(cmd *exec.Cmd) {
-		defer wg.Done()
-		printCmdOutput(*cmd)
+	runCmd := func(cmd flymakeCommand) {
+		wg.Add(1)
+		go func() { defer wg.Done(); cmd.printOutput() }()
 	}
 
-	cmds := [...]*exec.Cmd{buildCommand(testFile), vetCommand(testFile)}
-
-	wg.Add(len(cmds))
-	for _, cmd := range cmds {
-		go runCmd(cmd)
-	}
+	runCmd(buildCommand(testFile))
+	runCmd(vetCommand(testFile))
+	runCmd(fmtCommand(testFile))
+	runCmd(fixCommand(testFile))
 
 	wg.Wait()
 }
