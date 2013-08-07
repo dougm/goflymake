@@ -16,15 +16,15 @@
   (require 'go-mode)
   (require 'flycheck))
 
-(flycheck-declare-checker go-goflymake
+(flycheck-define-checker go-goflymake
   "A Go syntax and style checker using the go utility.
 
 See URL `https://github.com/dougm/goflymake'."
-  :command '("goflymake" "-prefix=flycheck-"
-             (eval (if goflymake-debug "-debug=true" "-debug=false"))
-             source-inplace)
-  :error-patterns '(("^\\(?1:.*\\):\\(?2:[0-9]+\\): \\(?4:.*\\)$" error))
-  :modes 'go-mode)
+  :command ("goflymake" "-prefix=flycheck-"
+            (eval (if goflymake-debug "-debug=true" "-debug=false"))
+            source-inplace)
+  :error-patterns ((error line-start (file-name) ":" line ": " (message) line-end))
+  :modes go-mode)
 
 (add-to-list 'flycheck-checkers 'go-goflymake)
 
