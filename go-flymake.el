@@ -1,6 +1,5 @@
-(eval-when-compile
-  (require 'go-mode)
-  (require 'flymake))
+(require 'go-mode)
+(require 'flymake)
 
 (defgroup goflymake nil
   "Support for Flymake in Go via goflymake"
