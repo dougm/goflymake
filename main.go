@@ -61,6 +61,7 @@ func main() {
 		files = append(files, pkg.CgoFiles...)
 		if isTest {
 			files = append(files, pkg.TestGoFiles...)
+			files = append(files, pkg.XTestGoFiles...)
 		}
 
 		for _, f := range files {
