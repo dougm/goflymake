@@ -1,6 +1,7 @@
 ;;; go-flycheck.el --- goflymake flycheck checker
 
 ;; Author: Peter Vasil <mail@petervasil.net>
+;; Package-Requires: ((go-mode "0") (flycheck "0.18"))
 
 ;;; Commentary:
 ;; Flycheck checker for the go programming language using goflymake tool
