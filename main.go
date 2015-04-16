@@ -41,6 +41,7 @@ func main() {
 	orig := base[len(*prefix):]
 	isTest := false
 	var goArguments []string
+	goArguments = append(goArguments, "go")
 
 	if strings.HasSuffix(orig, testSuffix) {
 		isTest = true
@@ -72,7 +73,7 @@ func main() {
 		}
 	}
 
-	cmd := exec.Command("go", goArguments...)
+	cmd := exec.Command("godep", goArguments...)
 	out, err := cmd.CombinedOutput()
 
 	fmt.Print(string(out))
