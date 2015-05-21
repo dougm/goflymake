@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -72,7 +73,28 @@ func main() {
 		}
 	}
 
-	cmd := exec.Command("go", goArguments...)
+	// determine if godep or go should be run
+	var useGodep = false
+	checkDir := sdir
+	for {
+		if fi, err := os.Stat(filepath.Join(checkDir, "Godeps")); err == nil && fi.Mode().IsDir() {
+			useGodep = true
+			break
+		} else if err != nil && !os.IsNotExist(err) {
+			panic(err)
+		}
+		checkDir = filepath.Dir(checkDir)
+		if checkDir == "." || checkDir == "/" {
+			break
+		}
+	}
+	var cmd *exec.Cmd
+	if useGodep {
+		goArguments = append([]string{"go"}, goArguments...)
+		cmd = exec.Command("godep", goArguments...)
+	} else {
+		cmd = exec.Command("go", goArguments...)
+	}
 	out, err := cmd.CombinedOutput()
 
 	fmt.Print(string(out))
