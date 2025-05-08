@@ -25,7 +25,7 @@
     temp-name))
 
 (defun goflymake-init ()
-  (let* ((temp-file (flymake-init-create-temp-buffer-copy
+  (let* ((temp-file (flymake-proc-init-create-temp-buffer-copy
                      'goflymake-create-temp-inplace))
          (local-file (file-relative-name
                       temp-file
@@ -34,7 +34,7 @@
           (list (if goflymake-debug "-debug=true" "-debug=false")
                 temp-file))))
 
-(push '(".+\\.go$" goflymake-init) flymake-allowed-file-name-masks)
+(push '(".+\\.go$" goflymake-init) flymake-proc-allowed-file-name-masks)
 
 (add-hook 'go-mode-hook 'flymake-mode)
 
